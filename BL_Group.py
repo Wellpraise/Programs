@@ -15,13 +15,13 @@ import hashlib
 
 filterwarnings("ignore")
 
-# ==================== 固定路径，无改动 ====================
-ROOT_DIR = r"/Users/inbest/Desktop/test"
-OUTPUT_DIR = r"/Users/inbest/Desktop/提单分组结果"
-TEMP_UNZIP = r"/Users/inbest/Desktop/temp_unzip_cache"
+# ==================== 固定路径（统一转为Path对象，修复路径类型隐患） ====================
+ROOT_DIR = Path(r"/Users/inbest/Desktop/test")
+OUTPUT_DIR = Path(r"/Users/inbest/Desktop/提单分组结果")
+TEMP_UNZIP = Path(r"/Users/inbest/Desktop/temp_unzip_cache")
 # ==========================================================
 
-# 提单、报关正则
+# 提单、报关正则（完全保留你原版正则，不修改）
 BL_KEY_REGEX = re.compile(
     r'(B/L\s*No[:：]\s*|BL\s*No[:：]\s*|提单号[:：]\s*|提运单号[:：]\s*)([A-Z0-9\-]{6,30})',
     re.IGNORECASE
@@ -85,7 +85,7 @@ def ocr_img_text(img_path: Path) -> str:
     except Exception:
         return ""
 
-# 提取单据编号 + 单文件内提单/报关号去重
+# 提取单据编号 + 单文件内提单/报关号去重（原版正确取值逻辑，无tuple报错）
 def extract_all_code(file_path: Path) -> tuple[list[str], list[str], str, str]:
     suffix = file_path.suffix.lower()
     source_type = "PDF正文识别"
@@ -104,12 +104,12 @@ def extract_all_code(file_path: Path) -> tuple[list[str], list[str], str, str]:
     else:
         return [], [], "跳过非PDF/图片文件", ""
 
-    # 提取提单号去重
+    # 提取提单号去重（原版正确写法，取m[1]编号）
     bl_matches = BL_KEY_REGEX.findall(raw_text)
     temp_bl = [m[1].strip() for m in bl_matches if len(m[1].strip()) >= 6]
     bl_list = list(dict.fromkeys(temp_bl))
 
-    # 提取报关单号去重
+    # 提取报关单号去重（原版正确写法）
     customs_matches = CUSTOMS_REGEX.findall(raw_text)
     temp_cus = [m[1].strip() for m in customs_matches if len(m[1].strip()) >= 16]
     customs_list = list(dict.fromkeys(temp_cus))
@@ -190,7 +190,7 @@ def scan_all_deep_files(root: Path, temp_dir: Path) -> list[Path]:
             file_list.append(path)
     return file_list
 
-# 分组归档 + 双重去重：文件MD5 + 文本MD5
+# 分组归档 + 双重去重：文件MD5 + 文本MD5（核心归类逻辑完全保留你的原版）
 def group_and_copy_files(file_list: list[Path], rename_rule: int):
     bl_group = {}
     cus_group = {}
@@ -240,18 +240,18 @@ def group_and_copy_files(file_list: list[Path], rename_rule: int):
             "提取报关单号": ",".join(customs_nums) if customs_nums else "无"
         })
 
-        # 区分分类模式：提单号分类 / 报关单号分类
+        # 区分分类模式：提单号分类 / 报关单号分类（原版核心归类逻辑，一丝未改）
         if rename_rule in [5,6]:
             # 模式5、6：强制以报关单号作为分类主键
             if not customs_nums:
-                unknown_dir = Path(OUTPUT_DIR) / "无匹配报关单_人工核对"
+                unknown_dir = OUTPUT_DIR / "无匹配报关单_人工核对"
                 unknown_dir.mkdir(parents=True, exist_ok=True)
                 main_cus = ""
                 copy_file_rename(file, unknown_dir, rename_rule, "", main_cus)
                 continue
             for cus_no in customs_nums:
                 safe_cus = clean_dir_name(cus_no)
-                target_dir = Path(OUTPUT_DIR) / safe_cus
+                target_dir = OUTPUT_DIR / safe_cus
                 target_dir.mkdir(parents=True, exist_ok=True)
                 copy_file_rename(file, target_dir, rename_rule, "", cus_no)
                 if cus_no not in cus_group:
@@ -260,14 +260,14 @@ def group_and_copy_files(file_list: list[Path], rename_rule: int):
         else:
             # 原有模式1/2/3/4：以提单号为主分类
             if not bl_nums:
-                unknown_dir = Path(OUTPUT_DIR) / "无匹配提单_人工核对"
+                unknown_dir = OUTPUT_DIR / "无匹配提单_人工核对"
                 unknown_dir.mkdir(parents=True, exist_ok=True)
                 main_cus = customs_nums[0] if customs_nums else ""
                 copy_file_rename(file, unknown_dir, rename_rule, "", main_cus)
                 continue
             for bl in bl_nums:
                 safe_bl = clean_dir_name(bl)
-                target_dir = Path(OUTPUT_DIR) / safe_bl
+                target_dir = OUTPUT_DIR / safe_bl
                 target_dir.mkdir(parents=True, exist_ok=True)
                 main_cus = customs_nums[0] if customs_nums else ""
                 copy_file_rename(file, target_dir, rename_rule, bl, main_cus)
@@ -277,7 +277,7 @@ def group_and_copy_files(file_list: list[Path], rename_rule: int):
 
     # 导出汇总表
     df = pd.DataFrame(log_rows)
-    excel_path = Path(OUTPUT_DIR) / "单据识别汇总清单.xlsx"
+    excel_path = OUTPUT_DIR / "单据识别汇总清单.xlsx"
     excel_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_excel(excel_path, index=False)
     print(f"\n✅ 汇总清单已生成：{excel_path}")
@@ -297,9 +297,9 @@ def group_and_copy_files(file_list: list[Path], rename_rule: int):
     print(f"\n🎉 全部处理完成，输出目录：{OUTPUT_DIR}")
 
 def main():
-    root_path = Path(ROOT_DIR)
-    out_path = Path(OUTPUT_DIR)
-    temp_path = Path(TEMP_UNZIP)
+    root_path = ROOT_DIR
+    out_path = OUTPUT_DIR
+    temp_path = TEMP_UNZIP
     out_path.mkdir(parents=True, exist_ok=True)
 
     if not root_path.exists():
