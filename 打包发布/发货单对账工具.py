@@ -159,18 +159,29 @@ def load_first_stage_data():
         if os.path.isdir(result_folder):
             folders_to_search.append(result_folder)
 
+    all_candidates = []
     for folder in folders_to_search:
         if not os.path.isdir(folder):
             continue
         for fname in os.listdir(folder):
             if fname.startswith("发货单_SKU标签汇总") and fname.endswith('.xlsx'):
                 fpath = os.path.join(folder, fname)
-                try:
-                    df = pd.read_excel(fpath, engine='openpyxl')
-                    if '箱子编码' in df.columns and len(df) > 0:
-                        return df
-                except:
-                    pass
+                all_candidates.append((fpath, fname))
+
+    # 按文件名排序(时间戳在文件名中,字典序即时间顺序),取最新的
+    if not all_candidates:
+        return None
+
+    all_candidates.sort(key=lambda x: x[1])
+    latest_path, latest_fname = all_candidates[-1]
+
+    try:
+        df = pd.read_excel(latest_path, engine='openpyxl')
+        if '箱子编码' in df.columns and len(df) > 0:
+            print(f"  ✅ 加载汇总表: {latest_fname} ({len(df)} 条)")
+            return df
+    except Exception as e:
+        print(f"  ❌ 加载 {latest_fname} 失败: {e}")
 
     return None
 
