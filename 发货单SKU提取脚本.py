@@ -12,15 +12,15 @@ Excel 发货单 SKU 汇总脚本 v3
 """
 
 import os
-import re
-import unicodedata
 import xlrd
 import pandas as pd
+from datetime import datetime
 
 # ==================== 配置区域 ====================
-INPUT_FOLDER = r"E:\验货\A0151\input the list"       # 输入文件夹
-OUTPUT_FOLDER = r"E:\验货\A0151\汇总结果_v3"          # 输出文件夹
-OUTPUT_FILENAME = "发货单_SKU标签汇总.xlsx"            # 输出文件名
+INPUT_FOLDER = r"E:\WORKBUDDY\验货\A0151\input the list"       # 👈 改这里：输入文件夹（放.xls/.xlsx文件）
+OUTPUT_FOLDER = r"E:\WORKBUDDY\验货\A0151\汇总结果"             # 👈 改这里：输出文件夹（放汇总结果）
+OUTPUT_FILENAME_PREFIX = "发货单_SKU标签汇总"               # 👈 改这里：输出文件名前缀
+TIMESTAMP_SUFFIX = True  # 👈 是否加时间戳后缀(如 20260720_130000)
 DATA_START_ROW = 12  # 第13行，索引从0开始所以是12
 LABEL_OVERRIDE_THRESHOLD = 10  # 连续空白行数达到此值，清空标签
 # =================================================
@@ -167,8 +167,13 @@ def main():
         # 创建输出目录
         os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-        # 保存结果
-        output_path = os.path.join(OUTPUT_FOLDER, OUTPUT_FILENAME)
+        # 生成带时间戳的文件名(避免重复运行被覆盖)
+        if TIMESTAMP_SUFFIX:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            output_filename = f"{OUTPUT_FILENAME_PREFIX}_{timestamp}.xlsx"
+        else:
+            output_filename = f"{OUTPUT_FILENAME_PREFIX}.xlsx"
+        output_path = os.path.join(OUTPUT_FOLDER, output_filename)
         result_df.to_excel(output_path, index=False, engine='openpyxl')
 
         print(f"\n✅ 汇总结果已保存到: {output_path}")
